@@ -2,6 +2,7 @@ import logging
 import os
 import time
 
+import urllib3.exceptions
 from nc_dnsapi import Client, DNSRecord
 from requests import get
 
@@ -95,14 +96,18 @@ counter = 0
 while 1:
     IP_ADDRESS = get_public_ip()
     logging.info(f'Updated ip address to: {IP_ADDRESS}')
-    API.login()
-    for domain in DOMAINS:
-        if counter >= 12:
-            logging.info("Forcing new fetches for domains.")
-            domain.fetch_records(force=True)
-            counter = 0
-        domain.update_destinations()
-    logging.info(f'Check done at {time.strftime("%d.%m.%y, %H:%M:%S", time.localtime())}.')
-    API.logout()
-    time.sleep(60 * interval_time)
+    try:
+        API.login()
+        for domain in DOMAINS:
+            if counter >= 12:
+                logging.info("Forcing new fetches for domains.")
+                domain.fetch_records(force=True)
+                counter = 0
+            domain.update_destinations()
+        logging.info(f'Check done at {time.strftime("%d.%m.%y, %H:%M:%S", time.localtime())}.')
+        API.logout()
+        time.sleep(60 * interval_time)
+    except urllib3.exceptions.MaxRetryError:
+        API.logout()
+        time.sleep(600)
     counter += 1
